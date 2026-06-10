@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tebak Kata </title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
+    </style>
+</head>
+<body class="bg-orange-50 min-h-screen flex flex-col justify-between text-slate-800">
+
+    <div class="bg-orange-600 text-white px-4 py-2 text-xs flex justify-between items-center shadow-inner">
+        <div>Total Main: <span id="stat-played" class="font-bold">0</span></div>
+        <div>Menang: <span id="stat-wins" class="font-bold">0</span></div>
+        <div class="bg-orange-700 px-2 py-0.5 rounded-full"> Streak: <span id="stat-streak" class="font-bold">0</span></div>
+    </div>
+
+    <header class="text-center py-4 bg-white border-b border-orange-100 shadow-sm">
+        <h1 class="text-2xl font-black tracking-widest text-orange-500">TEBAK KATA </h1>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-start px-4 py-6 max-w-md mx-auto w-full gap-5">
+        
+        <div class="bg-white rounded-2xl shadow-sm p-5 w-full text-center border border-orange-100">
+            <div id="timer" class="text-5xl font-extrabold text-orange-500 transition-all duration-300">03:00</div>
+            <div class="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div id="progress-bar" class="bg-orange-500 h-full w-full transition-all duration-1000"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm p-4 w-full text-center border border-orange-100 min-h-[90px] flex flex-col justify-center items-center">
+            <span class="text-[11px] font-bold text-orange-400 uppercase tracking-widest mb-1">Petunjuk Game</span>
+            <div id="clue-text" class="text-sm font-medium text-slate-500 italic">
+                Tekan tombol di bawah untuk mulai bermain.
+            </div>
+        </div>
+
+        <div class="w-full flex flex-wrap justify-center gap-2" id="word-slots">
+            </div>
+
+        <div class="w-full bg-white p-3 rounded-2xl shadow-sm border border-orange-100 mt-2" id="input-area" style="display: none;">
+            <div class="flex gap-2">
+                <input type="text" id="native-input" placeholder="Ketik jawabanmu..." autocomplete="off"
+                    class="flex-grow px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500 text-center font-bold tracking-wider uppercase bg-orange-50/50">
+                <button id="btn-guess" onclick="submitGuess()" 
+                    class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition shadow-md active:scale-95">
+                    KIRIM
+                </button>
+            </div>
+        </div>
+
+        <button id="btn-start" onclick="startGame()" 
+            class="w-full bg-white border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white font-bold py-3.5 px-6 rounded-xl transition duration-200 shadow-sm active:scale-95 mt-2">
+            Mulai Permainan
+        </button>
+
+    </main>
+
+    <footer class="text-center py-4 text-[11px] text-slate-400 font-medium">
+        Made for github.io • Responsive
+    </footer>
+
+    <script>
+        // Data Kategori Kata
+       const wordCategories = {
+    "Tempat": [
+        "MONAS", "BOROBUDUR", "PANTAI", "GUNUNG", "SAWAH",
+        "DANAU", "PASAR", "CANDI", "MUSEUM", "BANDARA",
+        "PELABUHAN", "HUTAN", "AIRTERJUN", "GOA", "TAMAN",
+        "STADION", "MASJID", "GEREJA", "SEKOLAH", "UNIVERSITAS"
+    ],
+
+    "Kota": [
+        "JAKARTA", "BANDUNG", "SURABAYA", "YOGYAKARTA",
+        "SEMARANG", "MALANG", "SOLO", "MEDAN",
+        "PALEMBANG", "PEKANBARU", "PADANG", "DENPASAR",
+        "BALIKPAPAN", "SAMARINDA", "BANJARMASIN",
+        "MANADO", "MAKASSAR", "AMBON", "JAYAPURA",
+        "CIREBON", "TANGERANG", "DEPOK", "BOGOR",
+        "BEKASI", "PURWOKERTO"
+    ],
+
+    "Negara": [
+        "INDONESIA", "JEPANG", "JERMAN", "MALAYSIA",
+        "PRANCIS", "BELANDA", "MESIR", "KOREA",
+        "CHINA", "THAILAND", "VIETNAM", "SINGAPURA",
+        "FILIPINA", "INDIA", "PAKISTAN", "RUSIA",
+        "KANADA", "AMERIKA", "BRAZIL", "ARGENTINA"
+    ],
+
+    "Elemen": [
+        "OKSIGEN", "HIDROGEN", "KARBON", "EMAS",
+        "PERAK", "TEMBAGA", "BESI", "NITROGEN",
+        "HELIUM", "NEON", "KALSIUM", "NATRIUM",
+        "KALIUM", "SENG", "TIMAH", "URANIUM"
+    ],
+
+    "Profesi": [
+        "DOKTER", "GURU", "PILOT", "ARSITEK",
+        "MASINIS", "POLISI", "PROGRAMMER",
+        "AKUNTAN", "DESAINER", "PENULIS",
+        "JURNALIS", "KOKI", "PETANI",
+        "NELAYAN", "MONTIR", "HAKIM",
+        "DOSEN", "APOTEKER", "PERAWAT",
+        "PENGACARA"
+    ],
+
+    "Band": [
+        "DEWA", "SLANK", "NOAH", "KOTAK",
+        "GIGI", "SHEILA", "UNGU",
+        "PADI", "NIDJI", "RADJA",
+        "ARMADA", "VIERRA", "GEISHA",
+        "WALI", "REPVBLIK", "JIKUSTIK"
+    ],
+
+    "Penyanyi": [
+        "MAHALINI", "TULUS", "ROSSA",
+        "JUDIKA", "RAISA", "AFGAN",
+        "ISYANA", "ANDMESH", "YURA",
+        "GLENN", "ANJI", "VIDI",
+        "TIARA", "RIZKY", "FABIO"
+    ],
+
+    "Artis": [
+        "SULE", "RAFFI", "NAGITA",
+        "BAIM", "REZA", "AZIZ",
+        "CORBUZIER", "LUNA", "BCL",
+        "NICHOLAS", "CHELSEA", "ARYA",
+        "DIAN", "VINO", "IRWANSYAH"
+    ],
+
+    "Benda": [
+        "REKENING", "LEMARI", "MEJA",
+        "KURSI", "DOMPET", "PAYUNG",
+        "PINTU", "JENDELA", "LAMPU",
+        "KIPAS", "BANTAL", "SELIMUT",
+        "GELAS", "SENDOK", "GARPU",
+        "PIRING", "BOTOL", "JAM",
+        "TAS", "KOPER"
+    ],
+
+    "Elektronik": [
+        "LAPTOP", "TELEVISI", "KULKAS",
+        "KOMPUTER", "HANDPHONE",
+        "BLENDER", "MESINCUCI",
+        "KAMERA", "TABLET",
+        "MONITOR", "KEYBOARD",
+        "MOUSE", "SPEAKER",
+        "PRINTER", "ROUTER",
+        "PROYEKTOR"
+    ],
+
+    "Merek": [
+        "LENOVO", "SAMSUNG", "APPLE",
+        "ASUS", "TOYOTA", "HONDA",
+        "NIKE", "ADIDAS", "XIAOMI",
+        "OPPO", "VIVO", "REALME",
+        "MITSUBISHI", "SUZUKI",
+        "YAMAHA", "KAWASAKI",
+        "GUCCI", "PRADA", "PUMA",
+        "HONOR"
+    ],
+
+    "Hewan": [
+        "KUCING", "ANJING", "GAJAH",
+        "HARIMAU", "SINGA", "KUDA",
+        "SAPI", "KERBAU", "AYAM",
+        "BEBEK", "KAMBING", "MONYET",
+        "LUMBA", "PAUS", "HIU",
+        "BUAYA", "ULAR", "BURUNG"
+    ],
+
+    "Makanan": [
+        "NASIGORENG", "SATE", "BAKSO",
+        "SOTO", "RENDANG", "GADOGADO",
+        "PECEL", "RAWON", "MIEAYAM",
+        "KETOPRAK", "SIOMAY", "PEMPEK",
+        "MARTABAK", "LONTONG", "GUDENG",
+        "OPOR", "KARE", "CAPCAY"
+    ],
+
+    "Minuman": [
+        "KOPI", "TEH", "SUSU",
+        "JUS", "ESCAMPUR", "BAJIGUR",
+        "WEDANG", "SEKOTENG", "CENDOL",
+        "ESKELAPA", "JAMU", "SODA",
+        "MILKSHAKE", "SMOOTHIE"
+    ],
+
+    "Olahraga": [
+        "SEPAKBOLA", "BASKET",
+        "BADMINTON", "VOLI",
+        "RENANG", "TENIS",
+        "GOLF", "CATUR",
+        "PANAHAN", "BALAP",
+        "ATLETIK", "KARATE",
+        "TAEKWONDO", "SILAT"
+    ],
+
+       "Anime": [
+        "NARUTO", "ONEPIECE", "BLEACH",
+        "DRAGONBALL", "DEMONSLAYER",
+        "JUJUTSUKAISEN", "ATTACKONTITAN",
+        "DEATHNOTE", "SPYXFAMILY",
+        "CHAINSAWMAN", "HAIKYU",
+        "BLUELOCK", "GINTAMA",
+        "INUYASHA", "SAILORMOON",
+        "POKEMON", "DIGIMON",
+        "DORAEMON", "SHINCHAN",
+        "DETECTIVECONAN"
+    ],
+
+    "Game": [
+        "MINECRAFT", "ROBLOX",
+        "FREEFIRE", "MOBILELEGENDS",
+        "PUBG", "VALORANT",
+        "DOTA", "COUNTERSTRIKE",
+        "GENSHIN", "HONKAI",
+        "FORTNITE", "OVERWATCH",
+        "FIFA", "PES",
+        "SKYRIM", "TERRARIA",
+        "PALWORLD", "STARDewVALLEY",
+        "AMONGUS", "CLASHOFCLANS"
+    ],
+
+    "Film": [
+        "AVATAR", "TITANIC",
+        "INCEPTION", "INTERSTELLAR",
+        "JURASSICPARK", "BATMAN",
+        "SUPERMAN", "SPIDERMAN",
+        "IRONMAN", "ENDGAME",
+        "FROZEN", "MOANA",
+        "ALADDIN", "COCO",
+        "JOKER", "VENOM",
+        "UP", "CARS",
+        "RATATOUILLE", "ZOOTOPIA"
+    ],
+
+    "Klub Bola": [
+        "BARCELONA", "REALMADRID",
+        "LIVERPOOL", "MANCITY",
+        "MUNICH", "DORTMUND",
+        "CHELSEA", "ARSENAL",
+        "MANCHESTERUNITED",
+        "TOTTENHAM", "JUVENTUS",
+        "MILAN", "INTER",
+        "NAPOLI", "PSG",
+        "AJAX", "BENFICA",
+        "GALATASARAY", "ALNASSR",
+        "PERSIB"
+    ],
+
+    "Pahlawan": [
+        "DIPONEGORO", "KARTINI",
+        "SOEKARNO", "HATTA",
+        "SUDIRMAN", "PATIMURA",
+        "CUTNYAKDIEN", "IMAMBONJOL",
+        "DEWISARTIKA", "TANMALAKA",
+        "KIHAJAR", "HASANUDDIN",
+        "SISINGAMANGARAJA",
+        "OTTOISKANDARDINATA",
+        "SUTANSJAHRIR",
+        "WAHIDHASYIM",
+        "AGUSSALIM",
+        "MARTHATIAHAHU",
+        "SUTOMO",
+        "PATTIMURA"
+    ],
+
+    "Buah": [
+        "APEL", "JERUK",
+        "MANGGA", "PISANG",
+        "SEMANGKA", "MELON",
+        "ANGGUR", "NANAS",
+        "PEPAYA", "RAMBUTAN",
+        "DURIAN", "SALAK",
+        "KELENGKENG", "ALPUKAT",
+        "SIRSAK", "JAMBU",
+        "MANGGIS", "LECI",
+        "MARKISA", "KEDONDONG"
+    ],
+
+    "Sayur": [
+        "BAYAM", "WORTEL",
+        "KANGKUNG", "SAWI",
+        "KOL", "BROKOLI",
+        "BUNCIS", "TERONG",
+        "TOMAT", "TIMUN",
+        "LABUSIAM", "LOBAK",
+        "SELADA", "SELERI",
+        "JAGUNG", "KACANGPANJANG",
+        "PETAI", "JENGKOL",
+        "PAPRIKA", "KENTANG"
+    ]
+};
+
+        // Variabel Global
+        let currentWord = "";
+        let currentTheme = "";
+        let timeLeft = 180;
+        let timerInterval = null;
+        let currentPhase = 1;
+        let gameActive = false;
+
+        // Local Storage Init
+        let stats = JSON.parse(localStorage.getItem("tebak_kata_stats")) || { played: 0, wins: 0, streak: 0 };
+
+        // Elemen DOM
+        const nativeInput = document.getElementById("native-input");
+        const slotsContainer = document.getElementById("word-slots");
+        const inputArea = document.getElementById("input-area");
+        
+        // Update Stats Awal
+        document.addEventListener("DOMContentLoaded", updateStatsUI);
+
+        // Event Listener untuk mengetik real-time
+        nativeInput.addEventListener("input", (e) => {
+            renderSlots(e.target.value.toUpperCase());
+        });
+
+        // Event Enter untuk Submit
+        nativeInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") submitGuess();
+        });
+
+        function updateStatsUI() {
+            document.getElementById("stat-played").innerText = stats.played;
+            document.getElementById("stat-wins").innerText = stats.wins;
+            document.getElementById("stat-streak").innerText = stats.streak;
+        }
+
+        function saveStats(isWin) {
+            stats.played += 1;
+            if (isWin) {
+                stats.wins += 1;
+                stats.streak += 1;
+            } else {
+                stats.streak = 0;
+            }
+            localStorage.setItem("tebak_kata_stats", JSON.stringify(stats));
+            updateStatsUI();
+        }
+
+        function startGame() {
+            clearInterval(timerInterval);
+            gameActive = true;
+            timeLeft = 180;
+            currentPhase = 1;
+
+            // Setup Kata & Kategori
+            const themes = Object.keys(wordCategories);
+            currentTheme = themes[Math.floor(Math.random() * themes.length)];
+            const words = wordCategories[currentTheme];
+            currentWord = words[Math.floor(Math.random() * words.length)].toUpperCase();
+
+            // Atur UI
+            document.getElementById("btn-start").innerText = "Ulangi Game";
+            inputArea.style.display = "block";
+            nativeInput.value = "";
+            nativeInput.maxLength = currentWord.length;
+            nativeInput.disabled = false;
+            document.getElementById("btn-guess").disabled = false;
+            nativeInput.focus();
+
+            // Set Clue
+            document.getElementById("clue-text").innerText = "Menit ke-1: Fokus! Belum ada petunjuk untukmu.";
+            document.getElementById("clue-text").className = "text-base font-bold text-slate-500 italic";
+            
+            updateTimerDisplay();
+            renderSlots("");
+
+            // Timer berjalan
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                checkPhaseLogic();
+
+                if (timeLeft <= 0) gameOver(false);
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            const timerDisplay = document.getElementById("timer");
+            const progressBar = document.getElementById("progress-bar");
+
+            timerDisplay.innerText = `${m}:${s}`;
+            progressBar.style.width = `${(timeLeft / 180) * 100}%`;
+
+            if (timeLeft <= 30) {
+                timerDisplay.className = "text-5xl font-extrabold text-red-500 animate-pulse";
+                progressBar.className = "bg-red-500 h-full transition-all duration-1000";
+            } else {
+                timerDisplay.className = "text-5xl font-extrabold text-orange-500 transition-all duration-300";
+                progressBar.className = "bg-orange-500 h-full transition-all duration-1000";
+            }
+        }
+
+        function checkPhaseLogic() {
+            const clueText = document.getElementById("clue-text");
+            if (timeLeft <= 120 && timeLeft > 60 && currentPhase === 1) {
+                currentPhase = 2;
+                clueText.innerHTML = `Tema: <span class="text-orange-600 not-italic">${currentTheme}</span>`;
+                clueText.className = "text-lg font-bold text-slate-700";
+            } else if (timeLeft <= 60 && currentPhase === 2) {
+                currentPhase = 3;
+                clueText.innerHTML = `Tema: <span class="text-orange-600 not-italic">${currentTheme}</span><br><span class="text-xs text-green-600 font-semibold block mt-1">✨ Huruf pertama & terakhir dibocorkan!</span>`;
+                renderSlots(nativeInput.value.toUpperCase());
+            }
+        }
+
+        function renderSlots(typedWord) {
+            slotsContainer.innerHTML = "";
+            for (let i = 0; i < currentWord.length; i++) {
+                const box = document.createElement("div");
+                box.className = "w-10 h-12 md:w-12 md:h-14 border-2 border-orange-300 rounded-xl flex items-center justify-center font-extrabold text-xl md:text-2xl transition-all shadow-sm";
+
+                // Jika user mengetik huruf, tampilkan huruf tersebut
+                if (typedWord[i]) {
+                    box.innerText = typedWord[i];
+                    box.className += " bg-orange-500 text-white border-orange-500";
+                } 
+                // Jika menit ke-3, bocorkan huruf pertama dan terakhir
+                else if (currentPhase === 3 && (i === 0 || i === currentWord.length - 1)) {
+                    box.innerText = currentWord[i];
+                    box.className += " bg-orange-100 text-orange-500 border-dashed border-orange-400";
+                } 
+                // Kotak kosong standar
+                else {
+                    box.innerText = "";
+                    box.className += " bg-white text-slate-700";
+                }
+                slotsContainer.appendChild(box);
+            }
+        }
+
+        function submitGuess() {
+            if (!gameActive) return;
+            const finalGuess = nativeInput.value.trim().toUpperCase();
+
+            if (finalGuess.length < currentWord.length) {
+                nativeInput.classList.add("border-red-500", "bg-red-50");
+                setTimeout(() => nativeInput.classList.remove("border-red-500", "bg-red-50"), 500);
+                return;
+            }
+
+            if (finalGuess === currentWord) {
+                gameOver(true);
+            } else {
+                nativeInput.value = "";
+                renderSlots("");
+                nativeInput.classList.add("border-red-500", "bg-red-50");
+                setTimeout(() => nativeInput.classList.remove("border-red-500", "bg-red-50"), 500);
+            }
+        }
+
+        function gameOver(isWin) {
+            clearInterval(timerInterval);
+            gameActive = false;
+            nativeInput.disabled = true;
+            document.getElementById("btn-guess").disabled = true;
+            saveStats(isWin);
+
+            slotsContainer.innerHTML = "";
+            for (let i = 0; i < currentWord.length; i++) {
+                const box = document.createElement("div");
+                box.className = `w-10 h-12 md:w-12 md:h-14 rounded-xl flex items-center justify-center font-extrabold text-xl md:text-2xl text-white shadow-sm ${isWin ? 'bg-green-500' : 'bg-red-500'}`;
+                box.innerText = currentWord[i];
+                slotsContainer.appendChild(box);
+            }
+
+            const clueText = document.getElementById("clue-text");
+            if (isWin) {
+                clueText.innerHTML = "<span class='text-green-600 font-black'>KAMU MENANG!</span> Jawabanmu Tepat!";
+            } else {
+                clueText.innerHTML = `<span class='text-red-600 font-black'>WAKTU HABIS!</span> Jawaban: <b>${currentWord}</b>`;
+            }
+        }
+    </script>
+</body>
+</html>
